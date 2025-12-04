@@ -16,10 +16,6 @@ THRESHOLD = 10_000          # USD – structuring threshold
 RNG = np.random.default_rng(seed=42)
 
 
-# -----------------------------
-# 1. Generate accounts table
-# -----------------------------
-
 def generate_accounts(
     num_accounts: int = NUM_ACCOUNTS,
     mule_fraction: float = MULE_FRACTION,
@@ -28,7 +24,6 @@ def generate_accounts(
     Create the accounts table with:
       - account_id
       - is_mule
-      - typology_type
       - account_open_day
     """
     account_ids = np.arange(num_accounts)
@@ -38,16 +33,11 @@ def generate_accounts(
 
     is_mule = np.isin(account_ids, mule_indices).astype(int)
 
-    # For now, assign typology_type = "normal" for all;
-    # we will overwrite for mule accounts in a separate step.
-    typology_type = np.array(["normal"] * num_accounts, dtype=object)
-
     account_open_day = RNG.integers(low=0, high=SIM_DAYS // 3, size=num_accounts)
 
     accounts = pd.DataFrame({
         "account_id": account_ids,
         "is_mule": is_mule,
-        "typology_type": typology_type,
         "account_open_day": account_open_day,
     })
 
@@ -111,10 +101,14 @@ def generate_transactions_fan_in(
     print("\nDEBUG: Total rows generated:", len(rows))
     print("=== FAN-IN DEBUG END ===\n")
 
-    return pd.DataFrame(
-        rows,
-        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    df = pd.DataFrame(
+    rows,
+    columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
     )
+    df["typology"] = "fan_in"
+    return df
+
+
 
 
 import numpy as np
@@ -175,10 +169,12 @@ def generate_transactions_fan_out(
     print("\nDEBUG (fan-out): Total rows generated:", len(rows))
     print("=== FAN-OUT DEBUG END ===\n")
 
-    return pd.DataFrame(
-        rows,
-        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    df = pd.DataFrame(
+    rows,
+    columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
     )
+    df["typology"] = "fan_out"
+    return df
 
 
 def generate_transactions_velocity(
@@ -240,10 +236,13 @@ def generate_transactions_velocity(
     print("\nDEBUG (velocity): Total rows generated:", len(rows))
     print("=== VELOCITY DEBUG END ===\n")
 
-    return pd.DataFrame(
-        rows,
-        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    df = pd.DataFrame(
+    rows,
+    columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
     )
+    df["typology"] = "velocity"
+    return df
+
 
 
 def generate_transactions_structuring(
@@ -304,10 +303,12 @@ def generate_transactions_structuring(
     print("\nDEBUG (structuring): Total rows generated:", len(rows))
     print("=== STRUCTURING DEBUG END ===\n")
 
-    return pd.DataFrame(
-        rows,
-        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    df = pd.DataFrame(
+    rows,
+    columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
     )
+    df["typology"] = "structuring"
+    return df
 
 
 def generate_transactions_layering(
@@ -388,10 +389,12 @@ def generate_transactions_layering(
     print("\nDEBUG (layering): Total rows generated:", len(rows))
     print("=== LAYERING DEBUG END ===\n")
 
-    return pd.DataFrame(
-        rows,
-        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    df = pd.DataFrame(
+    rows,
+    columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
     )
+    df["typology"] = "layering"
+    return df
 
 
 def generate_normal_transactions(
@@ -443,10 +446,12 @@ def generate_normal_transactions(
     print("DEBUG: Total normal transactions created:", len(rows))
     print("=== NORMAL TXN DEBUG END ===\n")
 
-    return pd.DataFrame(
-        rows,
-        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    df = pd.DataFrame(
+    rows,
+    columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
     )
+    df["typology"] = "normal"
+    return df
 
 
 # -----------------------------
@@ -472,6 +477,11 @@ def generate_full_dataset() -> Tuple[pd.DataFrame, pd.DataFrame]:
     structuring_txn = generate_transactions_structuring(accounts)
     layering_txn = generate_transactions_layering(accounts)
     normal_txn = generate_normal_transactions(accounts)
+
+    # Drop any existing txn_id column
+    for df in [fan_in_txn, fan_out_txn, velocity_txn, structuring_txn, layering_txn, normal_txn]:
+        if "txn_id" in df.columns:
+            df.drop(columns=["txn_id"], inplace=True)
 
     transactions = pd.concat(
         [fan_in_txn, fan_out_txn, velocity_txn, structuring_txn, layering_txn, normal_txn],
