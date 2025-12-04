@@ -312,30 +312,141 @@ def generate_transactions_structuring(
 
 def generate_transactions_layering(
     accounts: pd.DataFrame,
-    n_patterns: int = 10,
+    n_patterns: int = 30,
+    min_hops: int = 3,
+    max_hops: int = 6,
+    min_amount: float = 3000,
+    max_amount: float = 10000,
 ) -> pd.DataFrame:
     """
-    Generate circular layering typology:
-    chains A -> B -> C -> ... -> A.
+    Layering typology:
+    A mule account sends funds through 3–6 intermediate accounts,
+    each hop reducing the amount slightly (1–5%) and incrementing time.
     """
+
+    print("=== LAYERING DEBUG START ===")
+    print("Total mule accounts:", accounts[accounts["is_mule"] == 1].shape[0])
+    print("Total normal accounts:", accounts[accounts["is_mule"] == 0].shape[0])
+
     rows = []
-    # TODO: pick small rings of accounts and move funds around them in loops
-    return pd.DataFrame(rows, columns=["txn_id", "timestamp_day",
-                                       "src_account_id", "dst_account_id", "amount"])
+
+    mule_accounts = (
+        accounts[accounts["is_mule"] == 1]["account_id"]
+        .sample(n=n_patterns, replace=True)
+        .tolist()
+    )
+
+    print("Sample mule entry accounts:", mule_accounts[:5])
+
+    for i, start in enumerate(mule_accounts):
+
+        # number of hops
+        hops = RNG.integers(min_hops, max_hops + 1)
+
+        # chain: start (mule) + 2..(hops-1) normal accounts + end mule
+        intermediates = (
+            accounts[accounts["is_mule"] == 0]["account_id"]
+            .sample(hops - 2)
+            .tolist()
+        )
+
+        end = (
+            accounts[accounts["is_mule"] == 1]["account_id"]
+            .sample(1)
+            .iloc[0]
+        )
+
+        chain = [start] + intermediates + [end]
+
+        amount = RNG.uniform(min_amount, max_amount)
+        day = RNG.integers(0, SIM_DAYS)
+
+        print(f"\nPattern {i+1}: chain={chain}, start_amount={amount}")
+
+        for j in range(len(chain) - 1):
+
+            # reduce 1%–5%
+            loss_factor = RNG.uniform(0.01, 0.05)
+            new_amount = amount * (1 - loss_factor)
+
+            rows.append([
+                None,
+                int(day),
+                int(chain[j]),
+                int(chain[j+1]),
+                round(new_amount, 2)
+            ])
+
+            # debug for first few rows
+            if i < 2 and j < 2:
+                print("  TX:", rows[-1], "loss:", loss_factor)
+
+            # update amount & timestamp
+            amount = new_amount
+            day += RNG.integers(1, 3)
+
+    print("\nDEBUG (layering): Total rows generated:", len(rows))
+    print("=== LAYERING DEBUG END ===\n")
+
+    return pd.DataFrame(
+        rows,
+        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    )
 
 
 def generate_normal_transactions(
     accounts: pd.DataFrame,
-    avg_txn_per_account: int = 50,
+    n_transactions: int = 100_000,
+    min_amount: float = 100,
+    max_amount: float = 10_000,
 ) -> pd.DataFrame:
     """
-    Generate background 'normal' activity for all accounts,
-    with mild randomness and fewer counterparties.
+    Generate normal / benign transactions with no laundering structure.
+    - Random src/dst
+    - Log-normal amounts
+    - Random timestamps
     """
+
+    print("=== NORMAL TXN DEBUG START ===")
+    print("Total accounts:", accounts.shape[0])
+    print("Transactions to generate:", n_transactions)
+
     rows = []
-    # TODO: for each account, sample N transactions with random day, amount, counterparty
-    return pd.DataFrame(rows, columns=["txn_id", "timestamp_day",
-                                       "src_account_id", "dst_account_id", "amount"])
+
+    account_ids = accounts["account_id"].tolist()
+
+    for _ in range(n_transactions):
+
+        src, dst = RNG.choice(account_ids), RNG.choice(account_ids)
+
+        # Avoid self-transfer
+        if src == dst:
+            continue
+
+        # Log-normal realistic money distribution
+        amount = float(np.clip(
+            RNG.lognormal(mean=8, sigma=0.5),  # real-world skew
+            min_amount,
+            max_amount
+        ))
+
+        timestamp_day = RNG.integers(0, SIM_DAYS)
+
+        rows.append([
+            None,
+            timestamp_day,
+            int(src),
+            int(dst),
+            round(amount, 2)
+        ])
+
+    print("DEBUG: Total normal transactions created:", len(rows))
+    print("=== NORMAL TXN DEBUG END ===\n")
+
+    return pd.DataFrame(
+        rows,
+        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    )
 
 
 # -----------------------------
