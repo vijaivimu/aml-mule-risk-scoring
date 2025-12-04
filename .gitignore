@@ -1,0 +1,57 @@
+# -----------------------------------
+# Python
+# -----------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+venv/
+.env/
+env/
+.venv/
+
+# Pip files
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# -----------------------------------
+# Jupyter / VSCode
+# -----------------------------------
+.ipynb_checkpoints/
+.vscode/
+
+# -----------------------------------
+# Data files
+# (we track only small CSV samples!)
+# -----------------------------------
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+*.csv
+*.xlsx
+*.pkl
+*.json
+
+# Large ML files
+*.npy
+*.npz
+*.h5
+*.pt
+*.pkl
+
+# -----------------------------------
+# OS / Misc
+# -----------------------------------
+.DS_Store
+Thumbs.db
