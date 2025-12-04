@@ -183,31 +183,131 @@ def generate_transactions_fan_out(
 
 def generate_transactions_velocity(
     accounts: pd.DataFrame,
-    n_patterns: int = 20,
+    n_patterns: int = 200,
+    min_amount: float = 2000,
+    max_amount: float = 8000,
 ) -> pd.DataFrame:
     """
-    Generate rapid in–out typology:
-    money comes in and leaves quickly within short windows (high velocity).
+    Velocity typology:
+    A mule receives funds and quickly forwards them to another account
+    (same day or next day, slight fee deduction).
     """
+
+    print("=== VELOCITY DEBUG START ===")
+    print("Total mule accounts:", accounts[accounts["is_mule"] == 1].shape[0])
+    print("Total normal accounts:", accounts[accounts["is_mule"] == 0].shape[0])
+
     rows = []
-    # TODO: implement bursty in-out flows for selected mule accounts
-    return pd.DataFrame(rows, columns=["txn_id", "timestamp_day",
-                                       "src_account_id", "dst_account_id", "amount"])
+
+    for i in range(n_patterns):
+
+        # 1. Pick a mule account (pass-through node)
+        mule = accounts[accounts["is_mule"] == 1]["account_id"].sample(1).iloc[0]
+
+        # 2. Pick one incoming sender and one outgoing receiver (normal accounts)
+        src = accounts[accounts["is_mule"] == 0]["account_id"].sample(1).iloc[0]
+        dst = accounts[accounts["is_mule"] == 0]["account_id"].sample(1).iloc[0]
+
+        # 3. Incoming transaction
+        day = RNG.integers(0, SIM_DAYS - 2)
+        amt_in = RNG.uniform(min_amount, max_amount)
+
+        rows.append([
+            None,
+            day,
+            src,
+            mule,
+            round(amt_in, 2)
+        ])
+
+        # 4. Outgoing transaction (same or next day)
+        fee = RNG.uniform(20, 200)
+        amt_out = amt_in - fee
+
+        rows.append([
+            None,
+            day + RNG.integers(0, 2),
+            mule,
+            dst,
+            round(amt_out, 2)
+        ])
+
+        if i < 3:
+            print("\nExample velocity pair:")
+            print("IN: ", rows[-2])
+            print("OUT:", rows[-1])
+
+    print("\nDEBUG (velocity): Total rows generated:", len(rows))
+    print("=== VELOCITY DEBUG END ===\n")
+
+    return pd.DataFrame(
+        rows,
+        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    )
 
 
 def generate_transactions_structuring(
     accounts: pd.DataFrame,
-    n_patterns: int = 20,
-    threshold: float = THRESHOLD,
+    n_patterns: int = 50,
+    min_deposits: int = 5,
+    max_deposits: int = 30,
+    threshold_amount: float = 10000
 ) -> pd.DataFrame:
     """
-    Generate structuring / smurfing:
-    many incoming deposits just below the reporting threshold.
+    Structuring typology:
+    Many small deposits into mule accounts, all below the reporting threshold.
     """
+
+    print("=== STRUCTURING DEBUG START ===")
+    print("Total mule accounts:", accounts[accounts["is_mule"] == 1].shape[0])
+    print("Total normal accounts:", accounts[accounts["is_mule"] == 0].shape[0])
+
     rows = []
-    # TODO: generate deposits with amounts in [0.8*threshold, threshold - small_margin]
-    return pd.DataFrame(rows, columns=["txn_id", "timestamp_day",
-                                       "src_account_id", "dst_account_id", "amount"])
+
+    # 1. Pick mule accounts that will receive structured deposits
+    mule_accounts = accounts[accounts["is_mule"] == 1]["account_id"].sample(
+        n=n_patterns, replace=True
+    ).tolist()
+
+    print("Example mule receivers:", mule_accounts[:5])
+
+    for i, dst in enumerate(mule_accounts):
+
+        n_deposits = RNG.integers(min_deposits, max_deposits)
+
+        # Pick random normal accounts as structuring agents
+        senders = accounts[accounts["is_mule"] == 0]["account_id"].sample(
+            n=n_deposits, replace=True
+        ).tolist()
+
+        print(f"\nPattern {i+1}: dst={dst}, deposits={len(senders)}")
+
+        for src in senders:
+            timestamp_day = RNG.integers(0, SIM_DAYS)
+
+            # Amount ALWAYS below threshold (smurfing)
+            # randomized between 10%–99% of threshold
+            amount = RNG.uniform(0.1 * threshold_amount, 0.99 * threshold_amount)
+
+            rows.append([
+                None,
+                timestamp_day,
+                src,
+                dst,
+                round(amount, 2)
+            ])
+
+            # Show first few transactions for human validation
+            if len(rows) < 5:
+                print("  TX:", rows[-1])
+
+    print("\nDEBUG (structuring): Total rows generated:", len(rows))
+    print("=== STRUCTURING DEBUG END ===\n")
+
+    return pd.DataFrame(
+        rows,
+        columns=["txn_id", "timestamp_day", "src_account_id", "dst_account_id", "amount"]
+    )
 
 
 def generate_transactions_layering(
