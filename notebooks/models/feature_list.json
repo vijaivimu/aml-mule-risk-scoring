@@ -1,0 +1,18 @@
+[
+    "total_inflow_amount",
+    "total_outflow_amount",
+    "log_total_inflow",
+    "log_total_outflow",
+    "num_unique_senders",
+    "num_unique_receivers",
+    "num_incoming_txn",
+    "num_outgoing_txn",
+    "txn_velocity_per_day",
+    "num_txn_below_threshold",
+    "proportion_txn_below_threshold",
+    "avg_txn_amount",
+    "std_txn_amount",
+    "zscore_outflow",
+    "net_flow",
+    "ratio_in_out"
+]

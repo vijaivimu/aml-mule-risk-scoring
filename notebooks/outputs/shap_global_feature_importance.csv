@@ -1,0 +1,17 @@
+feature,mean_abs_shap,rank
+total_inflow_amount,0.7283214675456064,1.0
+avg_txn_amount,0.5781552602666516,2.0
+total_outflow_amount,0.3866839367757611,3.0
+txn_velocity_per_day,0.3209473454929777,4.0
+std_txn_amount,0.31930651630556933,5.0
+net_flow,0.302425089050993,6.0
+num_incoming_txn,0.2907572923217593,7.0
+proportion_txn_below_threshold,0.2398602972715745,8.0
+ratio_in_out,0.2183292521179833,9.0
+num_unique_receivers,0.2137862310550197,10.0
+log_total_inflow,0.2025190537607788,11.0
+num_unique_senders,0.1755700003136293,12.0
+num_txn_below_threshold,0.16929107434579943,13.0
+num_outgoing_txn,0.14597729738229193,14.0
+log_total_outflow,0.06235322522295141,15.0
+zscore_outflow,0.021026999167422615,16.0
