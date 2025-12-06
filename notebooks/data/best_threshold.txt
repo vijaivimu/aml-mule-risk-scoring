@@ -1,0 +1,2 @@
+Best threshold = 0.50
+Expected cost = 912,600
