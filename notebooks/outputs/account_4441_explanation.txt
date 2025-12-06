@@ -1,0 +1,5 @@
+- total_inflow_amount = 272824.53, contributes +4.61
+- num_unique_receivers = 53.00, contributes +1.70
+- total_outflow_amount = 176555.16, contributes +1.17
+- net_flow = 96269.37, contributes +1.10
+- log_total_inflow = 12.52, contributes +1.03
